@@ -2,6 +2,7 @@ console.log('Lets write JavaScript');
 let currentSong = new Audio();
 let songs;
 let currFolder;
+let filtered_songs = [];
 
 function secondsToMinutesSeconds(seconds) {
     if (isNaN(seconds) || seconds < 0) {
@@ -16,28 +17,36 @@ function secondsToMinutesSeconds(seconds) {
 
     return `${formattedMinutes}:${formattedSeconds}`;
 }
-
-async function getSongs(folder) {
-    currFolder = folder;
-    let a = await fetch(`/${folder}/`)
+// Here I also add attribute of filter = flase, it checks if the filter is true then it will only show the filtered songs which were searched by user
+async function getSongs(folder,filter=false) {
+ currFolder = folder;
+  if (!filter) {
+      // You can edit the url
+    let a = await fetch(
+      `/${folder}/`
+    );
     let response = await a.text();
-    let div = document.createElement("div")
+    
+    let div = document.createElement("div");
     div.innerHTML = response;
-    let as = div.getElementsByTagName("a")
-    songs = []
-    for (let index = 0; index < as.length; index++) {
-        const element = as[index];
-        if (element.href.endsWith(".mp3")) {
-            songs.push(element.href.split(`/${folder}/`)[1])
-        }
+    let as = div.getElementsByTagName("a");
+    songs = [];
+    for (let i = 0; i < as.length; i++) {
+      const element = as[i];
+      if (element.href.endsWith(".mp3")) {
+        songs.push(element.href.split(`/${folder}/`)[1]);
+      }
     }
+    filtered_songs = songs;
+  }
  
 
 
     // Show all the songs in the playlist
     let songUL = document.querySelector(".songList").getElementsByTagName("ul")[0]
     songUL.innerHTML = ""
-    for (const song of songs) {
+    // Replace songs to filtered_songs
+    for (const song of filtered_songs) {
         songUL.innerHTML = songUL.innerHTML + `<li><img class="invert" width="34" src="img/music.svg" alt="">
                             <div class="info">
                                 <div> ${song.replaceAll("%20", " ")}</div>
@@ -109,7 +118,8 @@ async function displayAlbums() {
         e.addEventListener("click", async item => {
             console.log("Fetching Songs")
             songs = await getSongs(`songs/${item.currentTarget.dataset.folder}`)  
-            playMusic(songs[0])
+            // Replace songs to filtered_songs
+            playMusic(filtered_songs[0])
 
         })
     })
@@ -118,7 +128,7 @@ async function displayAlbums() {
 async function main() {
     // Get the list of all the songs
     await getSongs("songs/ncs")
-    playMusic(songs[0], true)
+    playMusic(filtered_songs[0], true)
 
     // Display all the albums on the page
     await displayAlbums()
@@ -169,16 +179,14 @@ async function main() {
         }
     })
 
-    // Add an event listener to next
-    next.addEventListener("click", () => {
-        currentSong.pause()
-        console.log("Next clicked")
-
-        let index = songs.indexOf(currentSong.src.split("/").slice(-1)[0])
-        if ((index + 1) < songs.length) {
-            playMusic(songs[index + 1])
-        }
-    })
+   // Add an event listener to next
+  next.addEventListener("click", () => {
+    // ? Here I also add replaced the songs to filtered_songs
+    let index = filtered_songs.indexOf(currentSong.src.split("/").slice(-1)[0]);
+    if (index + 1 < filtered_songs.length) {
+      playMusic(filtered_songs[(index + 1) % filtered_songs.length]);
+    }
+  });
 
    // Add an event to volume
   document
@@ -232,6 +240,14 @@ async function main() {
       document.querySelector(".circle").style.left = percent * 100 - "%";
       currentSong.currentTime = percent * currentSong.duration;
     }
+  });
+
+    // I'll also add the search input in html and will also add it's css
+  search.addEventListener("keyup", async (event) => {
+    filtered_songs = songs.filter((song) =>
+      song.toLowerCase().includes(event.target.value.toLowerCase())
+    );
+    await getSongs(currFolder, (filter = true));
   });
 
 
